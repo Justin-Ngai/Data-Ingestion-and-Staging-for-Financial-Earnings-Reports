@@ -14,7 +14,8 @@ The pipeline uses AWS managed services and follows a layered design with Bronze 
 
 **Scheduling (EventBridge)**
 
-- Two schedules run daily at 7:00 AM
+- Earnings transcripts are scheduled quarterly
+- News articles are scheduled daily at 7:00 AM
 - Each schedule triggers a Step Functions workflow
 - Workflows receive a list of stock tickers
 
@@ -47,10 +48,10 @@ The pipeline uses AWS managed services and follows a layered design with Bronze 
 
 **Data Layers**
 
-| Layer  | Purpose          | Components                         |
-|--------|------------------|------------------------------------|
-| Bronze | Raw ingestion    | EventBridge, Lambda, S3 (JSON)      |
-| Silver | Staging and merge| Athena, Iceberg                    |
+| Layer  | Purpose           | Components                        |
+|--------|-------------------|-----------------------------------|
+| Bronze | Raw ingestion     | EventBridge, Lambda, S3 (JSON)     |
+| Silver | Staging and merge | Athena, Iceberg                   |
 
 ---
 
