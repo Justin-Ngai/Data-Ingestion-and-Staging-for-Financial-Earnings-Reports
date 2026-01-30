@@ -1,10 +1,10 @@
 Please see the accompanying Medium article:
-(Submit)
+https://medium.com/p/261c44edd20a/edit
 
-Files provided here:
-- Lambda Function - Earnings call transcript get
-- Athena queries
+**Files provided here for earnings call transcript**
+Lambda function - Get transcript
+Athena statements
 - Create Iceberg table
 - Create external table
-- Upsert into Iceberg table
-- Step Functions - Orchestration for earnings call transcript
+- MERGE (upsert) external table into Iceberg table
+Step function - Call above services
