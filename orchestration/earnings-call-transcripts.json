@@ -1,0 +1,92 @@
+{
+  "Comment": "Process ticker list from internal config",
+  "QueryLanguage": "JSONata",
+  "StartAt": "DefineTickers",
+  "States": {
+    "DefineTickers": {
+      "Type": "Pass",
+      "Output": {
+        "tickers": [
+          "SNOW",
+          "AAPL",
+          "MSFT"
+        ],
+        "year_quarter": "2024Q1"
+      },
+      "Next": "ProcessTickers"
+    },
+    "ProcessTickers": {
+      "Type": "Map",
+      "Items": "{% $states.input.tickers.({ 'ticker': $ , 'year_quarter': $states.input.year_quarter }) %}",
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "Get earnings call transcript",
+        "States": {
+          "Get earnings call transcript": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Arguments": {
+              "FunctionName": "AlphaVantage-EarningsCallsTranscript-Get",
+              "Payload": {
+                "symbol": "{% $states.input.ticker %}",
+                "year_quarter": "{% $states.input.year_quarter %}"
+              }
+            },
+            "Output": {
+              "ticker": "{% $states.input.ticker %}",
+              "lambdaResult": "{% $states.result.Payload %}"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Next": "Create table"
+          },
+          "Create table": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::athena:startQueryExecution",
+            "Arguments": {
+              "QueryString": "EXECUTE \"earnings call transcript - json to table\" USING ?",
+              "ExecutionParameters": [
+                "{% $states.input.ticker %}"
+              ],
+              "WorkGroup": "primary",
+              "ResultConfiguration": {
+                "OutputLocation": "s3://your-athena-results-bucket/"
+              }
+            },
+            "Next": "Merge into Iceberg"
+          },
+          "Merge into Iceberg": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::athena:startQueryExecution",
+            "Arguments": {
+              "QueryString": "EXECUTE \"earnings call transcript - table to iceberg\" USING ?",
+              "ExecutionParameters": [
+                "{% $states.input.ticker %}"
+              ],
+              "WorkGroup": "primary",
+              "ResultConfiguration": {
+                "OutputLocation": "s3://your-athena-results-bucket/"
+              }
+            },
+            "End": true
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}
