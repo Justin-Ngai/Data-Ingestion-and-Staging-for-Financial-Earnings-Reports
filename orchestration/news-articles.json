@@ -1,0 +1,92 @@
+{
+  "Comment": "Process ticker list for FMP news articles",
+  "QueryLanguage": "JSONata",
+  "StartAt": "DefineTickers",
+  "States": {
+    "DefineTickers": {
+      "Type": "Pass",
+      "Output": {
+        "tickers": [
+          "SNOW",
+          "AAPL",
+          "MSFT"
+        ],
+        "date": "2024-01-01"
+      },
+      "Next": "ProcessTickers"
+    },
+    "ProcessTickers": {
+      "Type": "Map",
+      "Items": "{% $states.input.tickers.({ 'ticker': $ , 'date': $states.input.date }) %}",
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "Get news articles",
+        "States": {
+          "Get news articles": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Arguments": {
+              "FunctionName": "FMP-NewsArticles-Get",
+              "Payload": {
+                "ticker": "{% $states.input.ticker %}",
+                "date": "{% $states.input.date %}"
+              }
+            },
+            "Output": {
+              "ticker": "{% $states.input.ticker %}",
+              "lambdaResult": "{% $states.result.Payload %}"
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "Lambda.ServiceException",
+                  "Lambda.AWSLambdaException",
+                  "Lambda.SdkClientException",
+                  "Lambda.TooManyRequestsException"
+                ],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "Next": "Create table"
+          },
+          "Create table": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::athena:startQueryExecution",
+            "Arguments": {
+              "QueryString": "EXECUTE \"fmp articles - json to table\" USING ?",
+              "ExecutionParameters": [
+                "{% $states.input.ticker %}"
+              ],
+              "WorkGroup": "primary",
+              "ResultConfiguration": {
+                "OutputLocation": "s3://your-athena-results-bucket/"
+              }
+            },
+            "Next": "Merge into Iceberg"
+          },
+          "Merge into Iceberg": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::athena:startQueryExecution",
+            "Arguments": {
+              "QueryString": "EXECUTE \"fmp articles - table to iceberg\" USING ?",
+              "ExecutionParameters": [
+                "{% $states.input.ticker %}"
+              ],
+              "WorkGroup": "primary",
+              "ResultConfiguration": {
+                "OutputLocation": "s3://your-athena-results-bucket/"
+              }
+            },
+            "End": true
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}
