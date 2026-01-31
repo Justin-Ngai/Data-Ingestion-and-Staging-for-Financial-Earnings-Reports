@@ -1,14 +1,6 @@
-Please see the accompanying Medium article:
+These are the code files for an AWS architecture that ingests earnings call transcript and news articles, then eventually upserts them into Iceberg tables. For a full description, see the accompanying Medium article: https://medium.com/p/261c44edd20a/edit
 
-https://medium.com/p/261c44edd20a/edit
-
-**Files provided here for earnings call transcript**
-
-Step function - Call below services
-
-Lambda function - Get transcript
-
-Athena statements
-- Create Iceberg table (one-time)
-- Create external table
-- Upsert into Iceberg table
+The folder structure is:
+- Ingestion-layer: getting from data sources the financial texts
+- Staging-layer: creating tables based on these financial texts
+- Orchestration: calling services to do the above
